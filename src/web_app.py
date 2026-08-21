@@ -68,7 +68,7 @@ app.config["SECRET_KEY"] = "graduated-autonomy-demo"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Check if React frontend is available (built)
-REACT_AVAILABLE = (BASE_DIR / "templates" / "react" / "index.html").exists()
+REACT_AVAILABLE = (BASE_DIR / "frontend" / "dist" / "index.html").exists()
 
 WATCHLIST_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "ADA-USD", "XRP-USD", "DOGE-USD", "AVAX-USD", "LINK-USD", "TRX-USD"]
 MARKET_PROVIDER: Optional[MarketDataProvider] = None
@@ -365,7 +365,7 @@ def seed_demo_data(reset_db: bool = False) -> None:
 def index() -> str:
     # Serve React app if available
     if REACT_AVAILABLE:
-        return app.send_static_file("react/index.html")
+        return app.send_static_file("frontend/dist/index.html")
     
     # Fall back to Jinja2 template
     # Removed warm_kronos() - now controlled by DISABLE_KRONOS env var
@@ -436,7 +436,7 @@ def index() -> str:
 def react_app() -> str:
     """Serve React frontend if available."""
     if REACT_AVAILABLE:
-        return app.send_static_file("react/index.html")
+        return app.send_static_file("frontend/dist/index.html")
     return redirect("/")
 
 

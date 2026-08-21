@@ -41,7 +41,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, '../templates/react'),
+    outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
