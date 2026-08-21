@@ -1,0 +1,11 @@
+database:
+  type: sqlite
+  path: data/local.db
+market:
+  provider: yfinance
+  fallback: mock
+logging:
+  file: audit.log
+  level: INFO
+risk:
+  model_confidence: 0.75

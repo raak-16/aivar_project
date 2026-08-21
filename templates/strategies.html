@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Trading Strategies</title>
+  <style>
+    body{margin:0;background:#07130f;color:#dffcf6;font:15px Consolas,monospace}.container{max-width:1000px;margin:auto;padding:30px 20px}
+    a{color:#7dd3fc}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+    .card{background:#0d1c18;border:1px solid rgba(94,234,212,.3);padding:18px}.active{border-color:#6ee7b7;box-shadow:0 0 16px rgba(110,231,183,.12)}
+    h1,h2{color:#6ee7b7}h2{font-size:16px}.muted{color:#8fb8ad;line-height:1.55}button{background:#12372c;color:#dffcf6;border:1px solid #6ee7b7;padding:10px;cursor:pointer;font-family:inherit}
+    .tag{color:#6ee7b7;font-size:12px;margin-bottom:12px}.portfolio{background:#0d1c18;border:1px solid rgba(94,234,212,.3);padding:14px;margin-bottom:20px}
+  </style>
+</head>
+<body><main class="container">
+  <div class="top"><h1>Strategy Lab</h1><a href="/">← Dashboard</a></div>
+  <div class="portfolio">Paper account: USD {{ '%.2f' % paper_portfolio.equity }} equity · USD {{ '%.2f' % paper_portfolio.cash }} cash</div>
+  <p class="muted">Choose one strategy for the next paper trades. The selected strategy is persisted locally. Every strategy uses completed candles only and keeps the paper-trading risk guards.</p>
+  <section class="cards">
+  {% for strategy in strategies %}
+    <article class="card {% if strategy.key == active_strategy %}active{% endif %}">
+      <h2>{{ strategy.name }}</h2>
+      {% if strategy.key == active_strategy %}<div class="tag">ACTIVE</div>{% endif %}
+      <p class="muted">{{ strategy.description }}</p>
+      <form method="post"><input type="hidden" name="strategy" value="{{ strategy.key }}"><button type="submit">{% if strategy.key == active_strategy %}Selected{% else %}Use this strategy{% endif %}</button></form>
+    </article>
+  {% endfor %}
+  </section>
+</main></body></html>

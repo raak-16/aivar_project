@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Graduated Autonomy Dashboard</title>
+    <style>
+      :root {
+        --bg: #07130f;
+        --bg-2: #0d1c18;
+        --panel: rgba(13, 28, 24, 0.9);
+        --panel-alt: rgba(9, 20, 17, 0.96);
+        --line: rgba(94, 234, 212, 0.24);
+        --text: #dffcf6;
+        --muted: #8fb8ad;
+        --green: #6ee7b7;
+        --green-soft: rgba(110, 231, 183, 0.12);
+        --amber: #fbbf24;
+        --amber-soft: rgba(251, 191, 36, 0.12);
+        --red: #f87171;
+        --red-soft: rgba(248, 113, 113, 0.12);
+        --blue: #7dd3fc;
+        --shadow: rgba(20, 255, 180, 0.1);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: "Consolas", "SFMono-Regular", "Menlo", monospace;
+        background:
+          radial-gradient(circle at top, rgba(44, 110, 88, 0.18), transparent 30%),
+          linear-gradient(180deg, var(--bg) 0%, #030a09 100%);
+        color: var(--text);
+        letter-spacing: 0.02em;
+      }
+      .container {
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 28px 20px 60px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        border: 1px solid var(--line);
+        background: rgba(9, 18, 16, 0.85);
+        box-shadow: 0 0 20px var(--shadow);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+      }
+      .title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .terminal-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 10px var(--green);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse { 50% { opacity: 0.35; transform: scale(0.75); } }
+      .live-status { color: var(--green); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+      h1 {
+        margin: 0;
+        font-size: clamp(20px, 2vw, 28px);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .nav a {
+        color: var(--text);
+        text-decoration: none;
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        background: rgba(17, 32, 27, 0.95);
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+      }
+      .nav a:hover { border-color: var(--green); color: var(--green); }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin: 22px 0;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px 18px;
+        box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.04);
+      }
+      .card h3 {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .card .value {
+        font-size: 30px;
+        font-weight: 700;
+        color: var(--green);
+      }
+      .ticker {
+        display: flex;
+        gap: 12px;
+        overflow: hidden;
+        white-space: nowrap;
+        border: 1px solid var(--line);
+        background: rgba(8, 17, 15, 0.9);
+        padding: 10px 12px;
+        margin-bottom: 20px;
+      }
+      .ticker-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border-right: 1px solid rgba(143, 184, 173, 0.15);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .ticker-item strong { color: var(--text); }
+      .desk-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(260px, 0.8fr);
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .metric-box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px;
+      }
+      .metric-box h3 {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .risk-meter {
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(143, 184, 173, 0.12);
+        overflow: hidden;
+        border: 1px solid rgba(143, 184, 173, 0.18);
+      }
+      .risk-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--green), var(--amber), var(--red));
+        width: 58%;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel-alt);
+        border: 1px solid var(--line);
+        padding: 18px 16px;
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .panel-tag {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .panel h2 {
+        margin: 0;
+        color: var(--green);
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .watchlist-panel {
+        min-height: 260px;
+      }
+      .chart-panel { margin-bottom: 20px; }
+      .chart-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      select { background: rgba(17, 32, 27, 0.95); color: var(--text); border: 1px solid var(--line); padding: 8px; font-family: inherit; }
+      .chart-wrap { height: 330px; position: relative; }
+      .comparison-strip { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; margin: 0 0 14px; }
+      .comparison-item { border-left: 2px solid var(--line); padding: 8px 10px; background: rgba(110, 231, 183, 0.04); }
+      .comparison-item .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+      .comparison-item .reading { color: var(--text); font-size: 16px; margin-top: 5px; font-weight: 700; }
+      @media (max-width: 700px) { .comparison-strip { grid-template-columns: repeat(2, 1fr); } }
+      .watchlist-table td strong {
+        color: var(--text);
+      }
+      .positive { color: var(--green); }
+      .negative { color: var(--red); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 4px;
+      }
+      th, td {
+        padding: 10px 8px;
+        border-bottom: 1px solid rgba(143, 184, 173, 0.15);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      td { font-size: 13px; }
+      .pill {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+      }
+      .autonomous {
+        background: var(--green-soft);
+        color: var(--green);
+        border-color: rgba(110, 231, 183, 0.35);
+      }
+      .confirm {
+        background: var(--amber-soft);
+        color: var(--amber);
+        border-color: rgba(251, 191, 36, 0.35);
+      }
+      .review {
+        background: var(--red-soft);
+        color: var(--red);
+        border-color: rgba(248, 113, 113, 0.35);
+      }
+      form.inline { display: inline; }
+      button {
+        background: rgba(125, 211, 252, 0.09);
+        color: var(--blue);
+        border: 1px solid rgba(125, 211, 252, 0.3);
+        padding: 8px 12px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-family: inherit;
+      }
+      button:hover { border-color: var(--blue); }
+      .danger {
+        background: rgba(248, 113, 113, 0.08);
+        color: var(--red);
+        border-color: rgba(248, 113, 113, 0.3);
+      }
+      .muted { color: var(--muted); }
+      .audit { font-size: 12px; color: var(--text); }
+      
+      /* Graduated Autonomy Panel Styles */
+      .autonomy-panel {
+        background: var(--panel-alt);
+        border: 1px solid var(--line);
+        padding: 18px 16px;
+        margin-bottom: 20px;
+      }
+      .autonomy-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .autonomy-title {
+        margin: 0;
+        color: var(--green);
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .autonomy-demo-buttons {
+        display: flex;
+        gap: 8px;
+      }
+      .demo-button {
+        padding: 6px 12px;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        background: rgba(110, 231, 183, 0.1);
+        border: 1px solid rgba(110, 231, 183, 0.3);
+        color: var(--green);
+      }
+      .demo-button:hover {
+        background: rgba(110, 231, 183, 0.2);
+        border-color: var(--green);
+      }
+      .autonomy-content {
+        display: grid;
+        gap: 16px;
+      }
+      .autonomy-action-display {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px;
+        border-radius: 4px;
+      }
+      .action-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(143, 184, 173, 0.1);
+      }
+      .action-label {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .action-value {
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .risk-factors {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .risk-factor {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 10px 12px;
+      }
+      .risk-factor-label {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .risk-factor-value {
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .autonomy-level-display {
+        text-align: center;
+        padding: 20px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        margin-top: 12px;
+      }
+      .autonomy-level-text {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .autonomy-level-autonomous { color: var(--green); }
+      .autonomy-level-confirmation { color: var(--amber); }
+      .autonomy-level-review { color: var(--red); }
+      .autonomy-reason {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+      .open-review-button {
+        margin-top: 12px;
+        padding: 10px 20px;
+        font-size: 12px;
+      }
+      .confirm-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .confirm-btn {
+        padding: 8px 16px;
+        font-size: 11px;
+      }
+      
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+        .topbar { flex-direction: column; align-items: flex-start; }
+        .risk-factors { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div class="title-wrap">
+          <span class="terminal-dot"></span>
+          <h1>Graduated Autonomy Engine</h1>
+        </div>
+        <div class="nav">
+          <span id="feed-status" class="live-status">Live feed connecting</span>
+          <a href="/">Overview</a>
+          <a href="/confirmations">Confirmations</a>
+          <a href="/reviews">Review Queue</a>
+          <a href="/strategies">Strategies</a>
+          <a href="/audit">Audit Log</a>
+        </div>
+      </div>
+
+      {% if market_overview %}
+      <div class="ticker">
+        {% for symbol, item in market_overview.items() %}
+        <div class="ticker-item"><span>{{ symbol }}</span><strong>{{ item.direction|upper }}</strong><span>{{ '%0.4f' % item.expected_return }}</span></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if summary %}
+      <div class="cards">
+        <div class="card">
+          <h3>Total Actions</h3>
+          <div class="value">{{ summary.total_actions }}</div>
+        </div>
+        <div class="card">
+          <h3>Pending Confirmations</h3>
+          <div class="value">{{ summary.pending_confirmations }}</div>
+        </div>
+        <div class="card">
+          <h3>Open Reviews</h3>
+          <div class="value">{{ summary.open_reviews }}</div>
+        </div>
+        <div class="card">
+          <h3>Latest Decision</h3>
+          <div class="value muted">{{ summary.latest_log.decision or 'n/a' }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if market_overview %}
+      <!-- GRADUATED AUTONOMY PANEL -->
+      <div class="autonomy-panel">
+        <div class="autonomy-header">
+          <h2 class="autonomy-title">Graduated Autonomy</h2>
+          <div class="autonomy-demo-buttons">
+            <button class="demo-button" onclick="runDemo('demo_low')">Demo: LOW</button>
+            <button class="demo-button" onclick="runDemo('demo_medium')">Demo: MEDIUM</button>
+            <button class="demo-button" onclick="runDemo('demo_high')">Demo: HIGH</button>
+          </div>
+        </div>
+        <div id="autonomy-display">
+          <div class="autonomy-content">
+            <div class="autonomy-action-display" id="autonomy-action" style="display: none;">
+              <div class="action-row">
+                <span class="action-label">Action</span>
+                <span class="action-value" id="autonomy-action-value">-</span>
+              </div>
+              <div class="action-row">
+                <span class="action-label">Symbol</span>
+                <span class="action-value" id="autonomy-symbol">-</span>
+              </div>
+              <div class="action-row">
+                <span class="action-label">Quantity</span>
+                <span class="action-value" id="autonomy-quantity">-</span>
+              </div>
+              <div class="action-row">
+                <span class="action-label">Trading Signal</span>
+                <span class="action-value" id="autonomy-signal">-</span>
+              </div>
+              <div class="action-row">
+                <span class="action-label">Confidence</span>
+                <span class="action-value" id="autonomy-confidence">-</span>
+              </div>
+            </div>
+            
+            <div class="metric-box">
+              <h3>Governance Risk</h3>
+              <div class="risk-meter"><div class="risk-fill" id="risk-meter-fill" style="width: 0%"></div></div>
+              <p class="muted" id="risk-meter-label" style="margin: 12px 0 0;">Risk score: 0.00</p>
+            </div>
+            
+            <div class="risk-factors">
+              <div class="risk-factor">
+                <div class="risk-factor-label">Reversibility</div>
+                <div class="risk-factor-value" id="risk-reversibility">0.00</div>
+              </div>
+              <div class="risk-factor">
+                <div class="risk-factor-label">Data Scope</div>
+                <div class="risk-factor-value" id="risk-data-scope">0.00</div>
+              </div>
+              <div class="risk-factor">
+                <div class="risk-factor-label">Regulatory</div>
+                <div class="risk-factor-value" id="risk-regulatory">0.00</div>
+              </div>
+              <div class="risk-factor">
+                <div class="risk-factor-label">Confidence Risk</div>
+                <div class="risk-factor-value" id="risk-confidence">0.00</div>
+              </div>
+            </div>
+            
+            <div class="autonomy-level-display">
+              <div class="autonomy-level-text" id="autonomy-level-text">AUTONOMOUS</div>
+              <div class="autonomy-reason" id="autonomy-reason">System ready. Waiting for proposals.</div>
+              <div id="autonomy-buttons">
+                <!-- Buttons will be shown based on autonomy level -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="desk-grid">
+        <div class="panel watchlist-panel">
+          <div class="panel-header">
+            <h2>Watchlist</h2>
+            <span id="market-timestamp" class="panel-tag">CRYPTO • LIVE</span>
+          </div>
+          <table class="watchlist-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in watchlist %}
+              <tr>
+                <td><strong>{{ item.symbol }}</strong></td>
+                <td>${{ '%.2f' % item.price }}</td>
+                <td class="{% if item.change_pct >= 0 %}positive{% else %}negative{% endif %}">{{ '%+.2f' % item.change_pct }}%</td>
+                <td>
+                  {% if item.direction == 'bullish' %}
+                  <span class="pill autonomous">{{ item.direction }}</span>
+                  {% elif item.direction == 'bearish' %}
+                  <span class="pill review">{{ item.direction }}</span>
+                  {% else %}
+                  <span class="pill confirm">{{ item.direction }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="stack">
+          <div class="metric-box">
+            <h3>Autonomy Risk</h3>
+            <div class="risk-meter"><div class="risk-fill"></div></div>
+            <p class="muted" style="margin: 12px 0 0;">Medium risk band / confirmation required</p>
+          </div>
+          <div class="metric-box">
+            <h3>Desk Status</h3>
+            <div class="muted">System Ready. Yahoo Finance Live Feed Active.</div>
+          </div>
+        </div>
+      </div>
+
+      {% if market_overview %}
+      <div class="panel chart-panel">
+        <div class="panel-header">
+          <h2>Actual vs Forecast</h2>
+          <div class="chart-toolbar">
+            <label class="panel-tag" for="chart-symbol">Asset</label>
+            <select id="chart-symbol">{% for symbol in market_overview.keys() %}<option value="{{ symbol }}">{{ symbol }}</option>{% endfor %}</select>
+            <button id="paper-trade" type="button">Trade with Kronos</button>
+            <span id="chart-model" class="panel-tag">Loading forecast</span>
+          </div>
+        </div>
+        <div class="comparison-strip">
+          <div class="comparison-item"><div class="label">Actual live price</div><div id="actual-price" class="reading">--</div></div>
+          <div class="comparison-item"><div class="label">Kronos target</div><div id="predicted-price" class="reading">--</div></div>
+          <div class="comparison-item"><div class="label">Predicted difference</div><div id="price-delta" class="reading">--</div></div>
+          <div class="comparison-item"><div class="label">Quote timestamp</div><div id="quote-time" class="reading">--</div></div>
+        </div>
+        <div class="chart-wrap"><canvas id="prediction-chart"></canvas></div>
+        <p class="muted" id="chart-note">Solid: actual close. Dashed: forecast.</p>
+        <p class="muted" id="paper-trade-result">Active strategy: {{ active_strategy|replace('_', ' ')|title }}. Select another strategy from the Strategies page.</p>
+      </div>
+
+      <div class="grid" style="margin-bottom: 20px;">
+        <div class="panel">
+          <h2>$100 Paper Portfolio</h2>
+          <p><strong>Cash:</strong> ${{ '%.2f' % paper_portfolio.cash }} &nbsp; <strong>Holdings:</strong> ${{ '%.2f' % paper_portfolio.holdings_value }} &nbsp; <strong>Equity:</strong> ${{ '%.2f' % paper_portfolio.equity }}</p>
+          {% if paper_portfolio.positions %}
+          <table><thead><tr><th>Asset</th><th>Quantity</th><th>Market value</th></tr></thead><tbody>
+            {% for position in paper_portfolio.positions %}<tr><td>{{ position.symbol }}</td><td>{{ '%.8f' % position.quantity }}</td><td>${{ '%.2f' % position.market_value }}</td></tr>{% endfor %}
+          </tbody></table>
+          {% else %}<p class="muted">No positions yet. Kronos will use 25% of available cash when it is bullish.</p>{% endif %}
+        </div>
+        <div class="panel">
+          <h2>Paper Trade History</h2>
+          <table><thead><tr><th>Action</th><th>Signal</th><th>Notional</th></tr></thead><tbody>
+            {% for trade in paper_portfolio.trades %}<tr><td>{{ trade.action }} {{ trade.symbol }}</td><td>{{ trade.signal_direction }}</td><td>${{ '%.2f' % trade.notional }}</td></tr>{% else %}<tr><td colspan="3" class="muted">No paper trades yet.</td></tr>{% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom: 20px;">
+        <h2>Market Forecast Overview</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Direction</th>
+              <th>Expected Return</th>
+              <th>Confidence</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for symbol, item in market_overview.items() %}
+            <tr>
+              <td>{{ symbol }}</td>
+              <td>
+                {% if item.direction == 'bullish' %}
+                <span class="pill autonomous">{{ item.direction }}</span>
+                {% elif item.direction == 'bearish' %}
+                <span class="pill review">{{ item.direction }}</span>
+                {% else %}
+                <span class="pill confirm">{{ item.direction }}</span>
+                {% endif %}
+              </td>
+              <td>{{ '%0.4f' % item.expected_return }}</td>
+              <td>{{ '%0.4f' % item.confidence }}</td>
+              <td>{{ item.summary }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if market_overview %}
+      <div class="panel" style="margin-bottom: 20px;">
+        <div class="panel-header">
+          <h2>Multi-Agent Financial Research</h2>
+          <span class="panel-tag">TradingAgents • Read-Only</span>
+        </div>
+        <div class="muted" style="margin-bottom: 14px; font-size: 12px;">
+          Run the local TradingAgents research pipeline (Market, News, Fundamentals analysts) using yfinance data. No Reddit, Polymarket, or FRED. No trades are executed automatically.
+        </div>
+        <div id="financial-research-form" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label for="research-symbol" class="panel-tag" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;">Symbol</label>
+            <select id="research-symbol" style="width: 180px;">
+              {% for symbol in market_overview.keys() %}
+              <option value="{{ symbol }}">{{ symbol }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label for="research-date" class="panel-tag" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;">Trade Date</label>
+            <input type="date" id="research-date" value="{{ current_date if current_date else '' }}" style="width: 180px; background: rgba(17, 32, 27, 0.95); color: var(--text); border: 1px solid var(--line); padding: 8px; font-family: inherit;" />
+          </div>
+          <button id="run-research" type="button" style="height: 40px; padding: 0 16px;">Run Research</button>
+        </div>
+        <div id="research-status" class="muted" style="margin-bottom: 12px; font-size: 12px;"></div>
+        <div id="research-result" style="display: none;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="metric-box">
+              <h3>Recommendation</h3>
+              <div id="recommendation-value" class="value" style="font-size: 24px;">-</div>
+            </div>
+            <div class="metric-box">
+              <h3>Signal</h3>
+              <div id="signal-value" class="value" style="font-size: 24px;">-</div>
+            </div>
+            <div class="metric-box">
+              <h3>Asset Type</h3>
+              <div id="asset-type-value" class="value muted" style="font-size: 18px;">-</div>
+            </div>
+          </div>
+          <div id="trader-plan" style="background: var(--panel); border: 1px solid var(--line); padding: 14px; margin-bottom: 14px;">
+            <h3 style="margin: 0 0 10px; color: var(--muted); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Trader Plan</h3>
+            <div id="trader-plan-content" class="muted" style="font-size: 13px; line-height: 1.5; white-space: pre-wrap;">-</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+            <div class="metric-box">
+              <h3>Market Report</h3>
+              <div id="market-report" class="muted" style="font-size: 12px; line-height: 1.5; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">-</div>
+            </div>
+            <div class="metric-box">
+              <h3>Fundamentals Report</h3>
+              <div id="fundamentals-report" class="muted" style="font-size: 12px; line-height: 1.5; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">-</div>
+            </div>
+            <div class="metric-box">
+              <h3>News Report</h3>
+              <div id="news-report" class="muted" style="font-size: 12px; line-height: 1.5; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Recent Actions</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Trade</th>
+                <th>Symbol</th>
+                <th>Risk</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for action in actions %}
+              <tr>
+                <td>{{ action.action_type }}</td>
+                <td>{{ action.symbol }}</td>
+                <td>{{ action.risk_score }}</td>
+                <td>
+                  {% if action.status == 'EXECUTED' %}
+                  <span class="pill autonomous">{{ action.status }}</span>
+                  {% elif action.status in ['PENDING_CONFIRMATION', 'CONFIRMED', 'REJECTED'] %}
+                  <span class="pill confirm">{{ action.status }}</span>
+                  {% else %}
+                  <span class="pill review">{{ action.status }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="muted">No actions found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <h2>Confirmation Queue</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Risk</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in confirmations %}
+              <tr>
+                <td>{{ item.action_type|upper }} {{ item.quantity }} {{ item.symbol }}</td>
+                <td>{{ item.risk_score }}</td>
+                <td>
+                  <form class="inline" method="post" action="/confirmations">
+                    <input type="hidden" name="action_id" value="{{ item.action_id }}" />
+                    <button type="submit" name="decision" value="approve">Approve</button>
+                    <button type="submit" name="decision" value="reject" class="danger">Reject</button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="muted">No confirmations waiting.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 20px;">
+        <div class="panel">
+          <h2>Human Review Queue</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Review</th>
+                <th>Assigned</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in reviews %}
+              <tr>
+                <td>{{ item.action_id }}</td>
+                <td>{{ item.assigned_to }}</td>
+                <td>{{ item.status }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="muted">No review tasks.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <h2>Audit Log</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Decision</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in logs %}
+              <tr>
+                <td class="audit">{{ log.timestamp[:19] if log.timestamp else '' }}</td>
+                <td>{{ log.decision }}</td>
+                <td>{{ log.risk_score }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="muted">No audit records yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const tableBody = document.querySelector('.watchlist-table tbody');
+        const chartSelect = document.getElementById('chart-symbol');
+        const chartModel = document.getElementById('chart-model');
+        const chartNote = document.getElementById('chart-note');
+        const paperTradeButton = document.getElementById('paper-trade');
+        const paperTradeResult = document.getElementById('paper-trade-result');
+        const actualPrice = document.getElementById('actual-price');
+        const predictedPrice = document.getElementById('predicted-price');
+        const priceDelta = document.getElementById('price-delta');
+        const quoteTime = document.getElementById('quote-time');
+        let predictionChart = null;
+        let chartPayload = null;
+        if (!tableBody) return;
+
+        function renderChart(payload) {
+          chartPayload = payload;
+          const actual = payload.actual || [];
+          const predicted = payload.prediction || [];
+          const labels = [...actual, ...predicted].map(point => new Date(point.time).toLocaleString());
+          const actualData = actual.map(point => point.close).concat(predicted.map(() => null));
+          const lastActual = actual.length ? actual[actual.length - 1].close : null;
+          const predictionData = actual.map((_, index) => index === actual.length - 1 ? lastActual : null).concat(predicted.map(point => point.close));
+          if (predictionChart) predictionChart.destroy();
+          predictionChart = new Chart(document.getElementById('prediction-chart'), {
+            type: 'line',
+            data: { labels, datasets: [
+              { label: `${payload.symbol} actual close`, data: actualData, borderColor: '#7dd3fc', pointRadius: 0, borderWidth: 2, tension: .18 },
+              { label: `${payload.symbol} ${payload.model} forecast`, data: predictionData, borderColor: '#fbbf24', pointRadius: 3, borderWidth: 2, borderDash: [7, 5], tension: .18, spanGaps: true },
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, animation: false,
+              plugins: { legend: { labels: { color: '#dffcf6', font: { family: 'Consolas' } } } },
+              scales: { x: { ticks: { color: '#8fb8ad', maxTicksLimit: 8 }, grid: { color: 'rgba(143,184,173,.1)' } }, y: { ticks: { color: '#8fb8ad' }, grid: { color: 'rgba(143,184,173,.1)' } } }
+            }
+          });
+          chartModel.textContent = `${payload.model.toUpperCase()} • ${payload.source.toUpperCase()}`;
+          updateComparison(payload, lastActual);
+          chartNote.textContent = payload.model === 'kronos'
+            ? 'Solid: actual close. Dashed: five-hour Kronos forecast.'
+            : 'Solid: actual close. Dashed: temporary forecast while Kronos loads.';
+        }
+
+        function formatPrice(value) {
+          return Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 });
+        }
+
+        function updateComparison(payload, livePrice) {
+          const forecast = (payload.prediction || []).at(-1);
+          const actual = Number(livePrice);
+          actualPrice.textContent = Number.isFinite(actual) ? `$${formatPrice(actual)}` : '--';
+          if (!forecast || !Number.isFinite(actual)) {
+            predictedPrice.textContent = '--';
+            priceDelta.textContent = '--';
+            return;
+          }
+          const target = Number(forecast.close);
+          const delta = target - actual;
+          predictedPrice.textContent = `$${formatPrice(target)} @ ${new Date(forecast.time).toLocaleTimeString()}`;
+          priceDelta.textContent = `${delta >= 0 ? '+' : ''}$${formatPrice(delta)} (${delta / actual * 100 >= 0 ? '+' : ''}${(delta / actual * 100).toFixed(2)}%)`;
+          priceDelta.className = `reading ${delta >= 0 ? 'positive' : 'negative'}`;
+          quoteTime.textContent = new Date().toLocaleTimeString();
+        }
+
+        async function loadChart(symbol) {
+          chartModel.textContent = 'LOADING FORECAST';
+          try {
+            const response = await fetch(`/api/chart?symbol=${encodeURIComponent(symbol)}`);
+            if (!response.ok) throw new Error('Chart request failed');
+            renderChart(await response.json());
+          } catch (error) {
+            chartModel.textContent = 'CHART UNAVAILABLE';
+            chartNote.textContent = 'Unable to load chart data. Live quotes will continue updating.';
+          }
+        }
+
+        async function runPaperTrade() {
+          const symbol = chartSelect.value;
+          paperTradeButton.disabled = true;
+          paperTradeResult.textContent = 'Kronos is deciding and placing a local paper order...';
+          try {
+            const response = await fetch('/api/paper-trade', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ symbol }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Paper trade failed');
+            paperTradeResult.textContent = result.trade.action + ' ' + result.trade.symbol + ': ' + result.decision.rationale + ' Regime: ' + result.decision.regime + '; score: ' + result.decision.score + '. Cash: $' + Number(result.trade.cash).toFixed(2) + '.';
+            if (result.governance) {
+              paperTradeResult.textContent += ' Governance: ' + result.governance.combined.autonomy_level + ' (risk: ' + result.governance.combined.risk_score + ') ' + result.governance.combined.final_status;
+            }
+            window.setTimeout(() => window.location.reload(), 700);
+          } catch (error) {
+            paperTradeResult.textContent = `Paper trade unavailable: ${error.message}`;
+          } finally {
+            paperTradeButton.disabled = false;
+          }
+        }
+
+        function renderWatchlist(payload) {
+          const rows = payload.symbols || [];
+          tableBody.innerHTML = rows.map((item) => {
+            const trend = item.direction === 'bullish' ? 'autonomous' : item.direction === 'bearish' ? 'review' : 'confirm';
+            const changeClass = Number(item.change_pct) >= 0 ? 'positive' : 'negative';
+            const sign = Number(item.change_pct) >= 0 ? '+' : '';
+            return `
+              <tr>
+                <td><strong>${item.symbol}</strong></td>
+                <td>$${Number(item.price).toFixed(2)}</td>
+                <td class="${changeClass}">${sign}${Number(item.change_pct).toFixed(2)}%</td>
+                <td><span class="pill ${trend}">${item.direction}</span></td>
+              </tr>
+            `;
+          }).join('');
+          const selected = chartSelect && chartSelect.value;
+          const quote = rows.find(item => item.symbol === selected);
+          if (quote && chartPayload && chartPayload.symbol === selected && chartPayload.actual.length) {
+            chartPayload.actual[chartPayload.actual.length - 1].close = Number(quote.price);
+            renderChart(chartPayload);
+            quoteTime.textContent = payload.updated_at ? new Date(payload.updated_at).toLocaleTimeString() : new Date().toLocaleTimeString();
+          }
+          const feedStatus = document.getElementById('feed-status');
+          const timestampEl = document.getElementById('market-timestamp');
+          if (feedStatus) feedStatus.textContent = `LIVE • KRONOS ${String(payload.kronos_status || 'warming').toUpperCase()}`;
+          if (timestampEl && payload.updated_at) timestampEl.textContent = `CRYPTO • UPDATED ${new Date(payload.updated_at).toLocaleTimeString()}`;
+        }
+
+        const initialPayload = { symbols: [
+          { symbol: 'BTC-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'ETH-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'SOL-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'BNB-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'ADA-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'XRP-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'DOGE-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'AVAX-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'LINK-USD', price: 0, change_pct: 0, direction: 'neutral' },
+          { symbol: 'TRX-USD', price: 0, change_pct: 0, direction: 'neutral' }
+        ]};
+        renderWatchlist(initialPayload);
+        if (chartSelect) {
+          chartSelect.addEventListener('change', () => loadChart(chartSelect.value));
+          paperTradeButton.addEventListener('click', runPaperTrade);
+          loadChart(chartSelect.value);
+          // Chart polling is SEPARATE from market display
+          // Market display: Socket.IO every 2 seconds
+          // Chart refresh: every 1 second (display only, no decisions)
+          window.setInterval(() => loadChart(chartSelect.value), 1000);
+        }
+
+        const socket = io();
+        socket.on('connect', function () {
+          socket.emit('request_market');
+        });
+        socket.on('market_update', function (payload) {
+          if (payload && payload.symbols) {
+            renderWatchlist(payload);
+          }
+        });
+
+        // Financial Research functionality
+        const researchForm = document.getElementById('financial-research-form');
+        const runResearchButton = document.getElementById('run-research');
+        const researchSymbol = document.getElementById('research-symbol');
+        const researchDate = document.getElementById('research-date');
+        const researchStatus = document.getElementById('research-status');
+        const researchResult = document.getElementById('research-result');
+
+        async function runFinancialResearch() {
+          const symbol = researchSymbol.value;
+          const tradeDate = researchDate.value;
+
+          if (!symbol) {
+            researchStatus.textContent = 'Please select a symbol.';
+            researchStatus.style.color = 'var(--red)';
+            return;
+          }
+
+          runResearchButton.disabled = true;
+          researchStatus.textContent = 'Running TradingAgents research pipeline...';
+          researchStatus.style.color = 'var(--blue)';
+          researchResult.style.display = 'none';
+
+          try {
+            const payload = { symbol };
+            if (tradeDate) {
+              payload.trade_date = tradeDate;
+            }
+
+            const response = await fetch('/api/financial-analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || `Research failed with status ${response.status}`);
+            }
+
+            const result = await response.json();
+            const analysis = result.analysis || result;
+
+            researchStatus.textContent = 'Research completed.';
+            researchStatus.style.color = 'var(--green)';
+            researchResult.style.display = 'block';
+
+            // Update the UI with the analysis results
+            const signal = analysis.signal || 'N/A';
+            const finalDecision = analysis.final_trade_decision || analysis.signal || 'N/A';
+            const assetType = analysis.asset_type || 'unknown';
+            const traderPlan = analysis.trader_plan || 'No plan generated.';
+
+            document.getElementById('recommendation-value').textContent = finalDecision;
+            document.getElementById('signal-value').textContent = signal;
+            document.getElementById('asset-type-value').textContent = assetType.toUpperCase();
+            document.getElementById('trader-plan-content').textContent = traderPlan;
+
+            // Update report sections
+            const reports = analysis.reports || {};
+            document.getElementById('market-report').textContent = reports.market || 'No market report.';
+            document.getElementById('fundamentals-report').textContent = reports.fundamentals || 'No fundamentals report.';
+            document.getElementById('news-report').textContent = reports.news || 'No news report.';
+
+            // Update autonomy panel with governance info
+            if (analysis.governance) {
+              updateAutonomyPanel(analysis.governance);
+            }
+
+          } catch (error) {
+            researchStatus.textContent = `Error: ${error.message}`;
+            researchStatus.style.color = 'var(--red)';
+            researchResult.style.display = 'none';
+          } finally {
+            runResearchButton.disabled = false;
+          }
+        }
+
+        if (runResearchButton) {
+          runResearchButton.addEventListener('click', runFinancialResearch);
+        }
+
+        if (researchDate) {
+          researchDate.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              runFinancialResearch();
+            }
+          });
+        }
+
+        // Graduated Autonomy Panel functionality
+        function updateAutonomyPanel(governanceData) {
+          const display = document.getElementById('autonomy-display');
+          if (!display) return;
+          
+          // Update action info
+          document.getElementById('autonomy-action-value').textContent = governanceData.decision || 'N/A';
+          document.getElementById('autonomy-symbol').textContent = governanceData.symbol || '-';
+          document.getElementById('autonomy-quantity').textContent = governanceData.quantity || '-';
+          document.getElementById('autonomy-signal').textContent = governanceData.signal || '-';
+          document.getElementById('autonomy-confidence').textContent = governanceData.confidence ? (governanceData.confidence * 100).toFixed(0) + '%' : '-';
+          
+          // Update risk meter
+          const riskScore = governanceData.risk_score || 0;
+          const riskPercent = riskScore * 100;
+          document.getElementById('risk-meter-fill').style.width = riskPercent + '%';
+          document.getElementById('risk-meter-label').textContent = 'Risk score: ' + riskScore.toFixed(4) + ' (' + governanceData.risk_level + ')';
+          
+          // Update risk factors
+          if (governanceData.breakdown) {
+            document.getElementById('risk-reversibility').textContent = governanceData.breakdown.reversibility ? governanceData.breakdown.reversibility.toFixed(4) : '0.00';
+            document.getElementById('risk-data-scope').textContent = governanceData.breakdown.data_scope ? governanceData.breakdown.data_scope.toFixed(4) : '0.00';
+            document.getElementById('risk-regulatory').textContent = governanceData.breakdown.regulatory ? governanceData.breakdown.regulatory.toFixed(4) : '0.00';
+            document.getElementById('risk-confidence').textContent = governanceData.breakdown.confidence_risk ? governanceData.breakdown.confidence_risk.toFixed(4) : '0.00';
+          }
+          
+          // Update autonomy level
+          const autonomyLevel = governanceData.autonomy_level || governanceData.decision || 'autonomous';
+          const levelText = document.getElementById('autonomy-level-text');
+          const reason = document.getElementById('autonomy-reason');
+          const buttonsDiv = document.getElementById('autonomy-buttons');
+          
+          levelText.className = 'autonomy-level-text';
+          levelText.textContent = autonomyLevel.toUpperCase();
+          
+          if (autonomyLevel === 'autonomous') {
+            levelText.classList.add('autonomy-level-autonomous');
+            reason.textContent = 'Low-risk action. System will execute automatically.';
+            buttonsDiv.innerHTML = '<button class="open-review-button" disabled>✓ EXECUTED AUTONOMOUSLY</button>';
+          } else if (autonomyLevel === 'confirmation') {
+            levelText.classList.add('autonomy-level-confirmation');
+            reason.textContent = 'Medium-risk action. User confirmation required.';
+            buttonsDiv.innerHTML = '<div class="confirm-buttons"><button class="confirm-btn" onclick="approveConfirmation()">APPROVE</button><button class="confirm-btn danger" onclick="rejectConfirmation()">REJECT</button></div>';
+          } else {
+            levelText.classList.add('autonomy-level-review');
+            reason.textContent = 'High-risk action. Human review required before execution.';
+            buttonsDiv.innerHTML = '<button class="open-review-button" onclick="openReview()">OPEN REVIEW</button>';
+          }
+          
+          // Show the display
+          display.style.display = 'block';
+        }
+        
+        // Demo scenario functionality
+        async function runDemo(scenarioId) {
+          const buttons = document.querySelectorAll('.demo-button');
+          buttons.forEach(btn => btn.disabled = true);
+          
+          try {
+            const response = await fetch('/api/demo/' + scenarioId);
+            if (!response.ok) throw new Error('Demo failed');
+            const result = await response.json();
+            
+            // Update autonomy panel with demo results
+            const governance = result.governance_risk;
+            const autonomyPanel = {
+              decision: governance.autonomy_level,
+              risk_score: governance.score,
+              risk_level: governance.level,
+              breakdown: governance.breakdown,
+              autonomy_level: governance.autonomy_level,
+              signal: result.scenario ? result.scenario.name : 'Demo',
+              symbol: result.scenario ? result.scenario.symbol : '-',
+              quantity: result.scenario ? result.scenario.quantity || '-' : '-',
+              confidence: result.scenario ? result.scenario.confidence : 0.75
+            };
+            
+            updateAutonomyPanel(autonomyPanel);
+            
+            // Show notification
+            const feedStatus = document.getElementById('feed-status');
+            if (feedStatus) {
+              feedStatus.textContent = 'DEMO: ' + (result.outcome ? result.outcome.outcome.toUpperCase() : 'COMPLETED');
+              feedStatus.style.color = 'var(--blue)';
+              setTimeout(() => {
+                feedStatus.textContent = 'LIVE • KRONOS READY';
+                feedStatus.style.color = 'var(--green)';
+              }, 3000);
+            }
+            
+          } catch (error) {
+            console.error('Demo error:', error);
+          } finally {
+            buttons.forEach(btn => btn.disabled = false);
+          }
+        }
+        
+        // Expose demo functions globally
+        window.runDemo = runDemo;
+        
+        function approveConfirmation() {
+          alert('Confirmation approved! In a real scenario, this would trigger execution.');
+        }
+        
+        function rejectConfirmation() {
+          alert('Confirmation rejected! Trade will not be executed.');
+        }
+        
+        function openReview() {
+          alert('Opening human review queue...');
+          window.location.href = '/reviews';
+        }
+
+      });
+    </script>
+  </body>
+</html>

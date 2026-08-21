@@ -1,0 +1,11 @@
+aws:
+  region: us-east-1
+  dynamodb:
+    table_name: graduated-autonomy-actions
+  lambda:
+    memory_size: 512
+    timeout: 30
+  cloudwatch:
+    log_group: /aws/lambda/graduated-autonomy
+  sns:
+    topic_arn: arn:aws:sns:us-east-1:123456789012:graduated-autonomy-alerts

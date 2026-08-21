@@ -1,0 +1,40 @@
+{
+  "version": "graduated-autonomy-v1",
+  "description": "PS-9.1 Graduated Autonomy Policy - Hackathon Configuration",
+  "risk_weights": {
+    "reversibility": 0.2,
+    "data_scope": 0.3,
+    "regulatory": 0.3,
+    "confidence": 0.2
+  },
+  "autonomy_thresholds": {
+    "low": 0.3,
+    "medium": 0.7
+  },
+  "risk_limits": {
+    "max_risk_per_trade": 0.02,
+    "max_position_size": 0.25,
+    "max_portfolio_exposure": 0.80,
+    "max_daily_loss": 0.05
+  },
+  "action_risk_categories": {
+    "read": "low",
+    "read_only_query": "low",
+    "update": "medium",
+    "single_record_update": "medium",
+    "trade": "medium",
+    "medium_trade": "medium",
+    "delete": "high",
+    "bulk_delete": "high",
+    "rebalance": "medium",
+    "high_impact_trade": "high"
+  },
+  "regulatory_categories": {
+    "crypto": 0.0,
+    "stock": 1.0,
+    "forex": 0.5,
+    "commodity": 0.7,
+    "etf": 0.6,
+    "unknown": 0.5
+  }
+}
