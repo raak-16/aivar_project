@@ -51,7 +51,7 @@ class MarketPredictor:
         if cls._kronos_predictor is not None:
             return cls._kronos_predictor
 
-        kronos_root = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "Kronos"))
+        kronos_root = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "kronos"))
         if not os.path.isdir(kronos_root):
             return None
 

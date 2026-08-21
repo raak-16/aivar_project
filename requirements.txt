@@ -17,5 +17,5 @@ einops==0.8.1
 safetensors==0.6.2
 tqdm>=4.67.1
 
-# Use the checked-out local multi-agent financial analysis engine.
--e ../tradingagents
+# Use the local multi-agent financial analysis engine (now vendored in this repo).
+-e ./tradingagents
