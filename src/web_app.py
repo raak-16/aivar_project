@@ -71,8 +71,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 REACT_AVAILABLE = (BASE_DIR / "templates" / "react" / "index.html").exists()
 
 WATCHLIST_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "ADA-USD", "XRP-USD", "DOGE-USD", "AVAX-USD", "LINK-USD", "TRX-USD"]
-MARKET_PROVIDER = MarketDataProvider()
-MARKET_PREDICTOR = MarketPredictor(MARKET_PROVIDER)
+MARKET_PROVIDER: Optional[MarketDataProvider] = None
+MARKET_PREDICTOR: Optional[MarketPredictor] = None
 
 # Autonomy decision interval (configurable, separate from market display)
 AUTONOMY_DECISION_INTERVAL = int(os.environ.get("AUTONOMY_INTERVAL", "30"))  # seconds
@@ -83,10 +83,16 @@ AUDIT_LOGGER = AuditLogger(log_path=str(BASE_DIR / "audit.log"))
 
 
 def get_market_provider() -> MarketDataProvider:
+    global MARKET_PROVIDER
+    if MARKET_PROVIDER is None:
+        MARKET_PROVIDER = MarketDataProvider()
     return MARKET_PROVIDER
 
 
 def get_market_predictor() -> MarketPredictor:
+    global MARKET_PREDICTOR
+    if MARKET_PREDICTOR is None:
+        MARKET_PREDICTOR = MarketPredictor(get_market_provider())
     return MARKET_PREDICTOR
 
 
@@ -1260,22 +1266,25 @@ def audit() -> str:
     return render_template("index.html", actions=storage.list_actions()[:5], confirmations=storage.list_confirmations()[:5], reviews=storage.list_reviews()[:5], logs=storage.list_audit_logs()[:12], summary={})
 
 
+# Start background tasks at module level (runs on import, works with gunicorn)
+# Only warm Kronos and seed demo data - heavy init is deferred
+MarketPredictor.warm_kronos()
+socketio.start_background_task(stream_market_updates)
+
+# Start autonomy loop if enabled
+if os.environ.get("ENABLE_AUTONOMY", "true").lower() in {"1", "true", "yes"}:
+    app.autonomy_thread = threading.Thread(
+        target=autonomous_decision_loop,
+        name="autonomy-loop",
+        daemon=True
+    )
+    app.autonomy_thread.start()
+    print("Autonomous decision loop started")
+
+
 if __name__ == "__main__":
     reset_requested = "--reset-db" in sys.argv or os.environ.get("RESET_LOCAL_DB", "").lower() in {"1", "true", "yes"}
     if reset_requested:
         reset_local_state()
     seed_demo_data(reset_db=reset_requested)
-    MarketPredictor.warm_kronos()
-    socketio.start_background_task(stream_market_updates)
-    
-    # Start autonomy loop if enabled
-    if os.environ.get("ENABLE_AUTONOMY", "true").lower() in {"1", "true", "yes"}:
-        app.autonomy_thread = threading.Thread(
-            target=autonomous_decision_loop,
-            name="autonomy-loop",
-            daemon=True
-        )
-        app.autonomy_thread.start()
-        print("Autonomous decision loop started")
-    
     socketio.run(app, debug=False, host="127.0.0.1", port=5000)
