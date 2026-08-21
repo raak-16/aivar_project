@@ -99,6 +99,10 @@ class MarketPredictor:
     @classmethod
     def warm_kronos(cls) -> None:
         """Load the model outside the request/update path."""
+        import os
+        # Skip if Kronos is disabled via environment variable
+        if os.environ.get("DISABLE_KRONOS", "false").lower() == "true":
+            return
         with cls._kronos_lock:
             if cls._kronos_loading or cls._kronos_predictor is not None:
                 return

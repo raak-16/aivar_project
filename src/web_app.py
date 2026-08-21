@@ -368,7 +368,7 @@ def index() -> str:
         return app.send_static_file("react/index.html")
     
     # Fall back to Jinja2 template
-    MarketPredictor.warm_kronos()
+    # Removed warm_kronos() - now controlled by DISABLE_KRONOS env var
     reset_requested = os.environ.get("RESET_LOCAL_DB", "").lower() in {"1", "true", "yes"}
     seed_demo_data(reset_db=reset_requested)
     storage = get_storage()
@@ -379,9 +379,12 @@ def index() -> str:
     predictor = get_market_predictor()
     provider = get_market_provider()
 
+    # Limit symbols for memory efficiency
+    display_symbols = WATCHLIST_SYMBOLS[:int(os.environ.get("DASHBOARD_SYMBOL_COUNT", "3"))]
+    
     market_overview = {}
     watchlist = []
-    for symbol in WATCHLIST_SYMBOLS:
+    for symbol in display_symbols:
         snapshot = provider.fetch(symbol)
         signal = predictor.forecast(symbol)
         market_overview[symbol] = {
@@ -439,8 +442,11 @@ def react_app() -> str:
 
 def _market_payload() -> Dict[str, Any]:
     """Market data payload for Socket.IO (display only, no decisions)."""
-    with ThreadPoolExecutor(max_workers=min(8, len(WATCHLIST_SYMBOLS))) as pool:
-        symbols = list(pool.map(_build_market_snapshot, WATCHLIST_SYMBOLS))
+    # Reduced for memory: only 2 workers, only first 3 symbols
+    max_workers = int(os.environ.get("MARKET_WORKERS", "2"))
+    symbols_to_fetch = WATCHLIST_SYMBOLS[:int(os.environ.get("MARKET_SYMBOL_COUNT", "3"))]
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        symbols = list(pool.map(_build_market_snapshot, symbols_to_fetch))
     return {
         "symbols": symbols,
         "count": len(symbols),
@@ -460,10 +466,11 @@ def handle_request_market() -> None:
 
 
 def stream_market_updates() -> None:
-    """Stream market data updates (every 2 seconds - DISPLAY ONLY)."""
+    """Stream market data updates (configurable interval, default 30s for memory)."""
+    update_interval = int(os.environ.get("MARKET_UPDATE_INTERVAL", "30"))
     while True:
         socketio.emit("market_update", _market_payload())
-        socketio.sleep(2)
+        socketio.sleep(update_interval)
 
 
 def autonomous_decision_loop() -> None:
@@ -483,60 +490,76 @@ def autonomous_decision_loop() -> None:
                 active_strategy_key = storage.get_setting("paper_strategy", "adaptive")
                 strategy = get_strategy(active_strategy_key)
                 
-                for symbol in WATCHLIST_SYMBOLS:
+                for symbol in WATCHLIST_SYMBOLS[:int(os.environ.get("AUTONOMY_SYMBOL_COUNT", "3"))]:
                     try:
                         # Get market data
                         provider = get_market_provider()
                         predictor = get_market_predictor()
                         snapshot = provider.fetch(symbol)
                         signal = predictor.forecast(symbol)
-                        history, _ = provider.history(symbol)
-                        position = storage.get_paper_position(symbol)
                         
-                        # Get technical indicators
-                        indicators = TECHNICAL_ENGINE.calculate_indicators(history, symbol)
-                        
-                        # Get strategy signal
-                        strategy_signal = STRATEGY_ENGINE.generate_signal(history, symbol)
-                        
-                        # Get backtest metrics
-                        backtest_result = run_simple_backtest(history, symbol, "combined")
-                        backtest_metrics = backtest_result.metrics.to_dict()
-                        
-                        # Strategy decision
-                        decision = strategy.decide(
-                            history, signal, float(position["average_price"]) if position else None
-                        )
+                        # Skip heavy operations in memory-saving mode
+                        if os.environ.get("MEMORY_SAVE_MODE", "false").lower() == "true":
+                            # Lightweight path: only use signal, skip history/backtest/indicators
+                            decision_action = "HOLD"  # Default to no action
+                        else:
+                            history, _ = provider.history(symbol)
+                            position = storage.get_paper_position(symbol)
+                            
+                            # Get technical indicators
+                            indicators = TECHNICAL_ENGINE.calculate_indicators(history, symbol)
+                            
+                            # Get strategy signal
+                            strategy_signal = STRATEGY_ENGINE.generate_signal(history, symbol)
+                            
+                            # Get backtest metrics
+                            backtest_result = run_simple_backtest(history, symbol, "combined")
+                            backtest_metrics = backtest_result.metrics.to_dict()
+                            
+                            # Strategy decision
+                            decision = strategy.decide(
+                                history, signal, float(position["average_price"]) if position else None
+                            )
+                            decision_action = decision.action
                         
                         # Determine action
-                        if decision.action == "HOLD":
+                        if decision_action == "HOLD":
                             continue
                             
-                        action = decision.action
+                        action = decision_action
                         
-                        # Evaluate through governance
-                        eval_result = _evaluate_trade_proposal(
-                            symbol=symbol,
-                            action=action,
-                            quantity=0.01 if action == "BUY" else (float(position["quantity"]) if position else 0),
-                            price=float(snapshot.price),
-                            confidence=signal.confidence,
-                            strategy=active_strategy_key,
-                        )
-                        
-                        # Only execute if autonomous and safe
-                        if eval_result["combined"]["autonomy_level"] == "autonomous" and eval_result["combined"]["can_execute"]:
-                            # Execute paper trade
-                            trader = KronosPaperTrader(storage)
-                            trade_result = trader.trade(
+                        # Evaluate through governance (skip if in memory save mode)
+                        if os.environ.get("MEMORY_SAVE_MODE", "false").lower() == "true":
+                            # Skip evaluation in memory save mode
+                            eval_result = None
+                        else:
+                            position = storage.get_paper_position(symbol)
+                            eval_result = _evaluate_trade_proposal(
                                 symbol=symbol,
-                                price=float(snapshot.price),
-                                signal=signal,
                                 action=action,
-                                allocation=decision.allocation,
-                                sell_fraction=decision.sell_fraction,
-                                rationale=decision.rationale,
+                                quantity=0.01 if action == "BUY" else (float(position["quantity"]) if position else 0),
+                                price=float(snapshot.price),
+                                confidence=signal.confidence,
+                                strategy=active_strategy_key,
                             )
+                        
+                        # Only execute if autonomous and safe (and not in memory save mode)
+                        if eval_result and eval_result["combined"]["autonomy_level"] == "autonomous" and eval_result["combined"]["can_execute"]:
+                            # Execute paper trade
+                            if os.environ.get("MEMORY_SAVE_MODE", "false").lower() == "true":
+                                # Skip trade execution in memory save mode
+                                trade_result = None
+                            else:
+                                trader = KronosPaperTrader(storage)
+                                trade_result = trader.trade(
+                                    symbol=symbol,
+                                    price=float(snapshot.price),
+                                    signal=signal,
+                                    action=action,
+                                    allocation=decision.allocation,
+                                    sell_fraction=decision.sell_fraction,
+                                    rationale=decision.rationale,
+                                )
                             
                             # Log execution
                             AUDIT_LOGGER.log_action_execution(
@@ -552,9 +575,10 @@ def autonomous_decision_loop() -> None:
                                 user="autonomous_agent",
                             )
                             
-                            print(f"[AUTONOMY] Executed {action} {symbol} @ ${snapshot.price:.2f}")
+                            if trade_result:
+                                print(f"[AUTONOMY] Executed {action} {symbol} @ ${snapshot.price:.2f}")
                         
-                        elif eval_result["combined"]["autonomy_level"] == "confirmation":
+                        elif eval_result and eval_result["combined"]["autonomy_level"] == "confirmation":
                             # Queue for confirmation
                             storage.save_confirmation(
                                 eval_result["proposal"]["decision_id"],
@@ -563,7 +587,7 @@ def autonomous_decision_loop() -> None:
                             )
                             print(f"[AUTONOMY] Queued {action} {symbol} for confirmation (risk: {eval_result['governance_risk']['score']:.4f})")
                         
-                        else:  # review
+                        elif eval_result and eval_result["combined"]["autonomy_level"] == "review":
                             # Queue for human review
                             storage.save_review(
                                 eval_result["proposal"]["decision_id"],
@@ -573,14 +597,18 @@ def autonomous_decision_loop() -> None:
                             )
                             print(f"[AUTONOMY] Queued {action} {symbol} for review (risk: {eval_result['governance_risk']['score']:.4f})")
                         
-                        # Store action
-                        storage.create_action(
-                            eval_result["proposal"],
-                            eval_result["governance_risk"]["score"],
-                            "EXECUTED" if eval_result["combined"]["autonomy_level"] == "autonomous" and eval_result["combined"]["can_execute"] else
-                            "PENDING_CONFIRMATION" if eval_result["combined"]["autonomy_level"] == "confirmation" else
-                            "QUEUED_FOR_REVIEW"
-                        )
+                        # Store action (skip if in memory save mode)
+                        if eval_result:
+                            storage.create_action(
+                                eval_result["proposal"],
+                                eval_result["governance_risk"]["score"],
+                                "EXECUTED" if eval_result["combined"]["autonomy_level"] == "autonomous" and eval_result["combined"]["can_execute"] else
+                                "PENDING_CONFIRMATION" if eval_result["combined"]["autonomy_level"] == "confirmation" else
+                                "QUEUED_FOR_REVIEW"
+                            )
+                        else:
+                            # In memory save mode, just log
+                            print(f"[AUTONOMY] Skipped {action} {symbol} (memory save mode)")
                         
                         # Sleep between symbols to avoid rate limiting
                         time.sleep(1)
@@ -1267,12 +1295,14 @@ def audit() -> str:
 
 
 # Start background tasks at module level (runs on import, works with gunicorn)
-# Only warm Kronos and seed demo data - heavy init is deferred
+# Warm Kronos only if not disabled (saves ~1-4GB RAM)
 MarketPredictor.warm_kronos()
+
+# Start market updates background task (reduced frequency saves memory)
 socketio.start_background_task(stream_market_updates)
 
-# Start autonomy loop if enabled
-if os.environ.get("ENABLE_AUTONOMY", "true").lower() in {"1", "true", "yes"}:
+# Start autonomy loop if enabled (disabled by default for memory)
+if os.environ.get("ENABLE_AUTONOMY", "false").lower() in {"1", "true", "yes"}:
     app.autonomy_thread = threading.Thread(
         target=autonomous_decision_loop,
         name="autonomy-loop",
